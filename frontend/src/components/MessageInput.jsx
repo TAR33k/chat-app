@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,7 +7,14 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+  const textInputRef = useRef(null);
   const { sendMessage } = useChatStore();
+
+  useEffect(() => {
+    if (textInputRef.current) {
+      textInputRef.current.focus();
+    }
+  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -51,6 +58,7 @@ const MessageInput = () => {
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (textInputRef.current) textInputRef.current.focus();
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -85,6 +93,7 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
+            ref={textInputRef}
             onChange={(e) => setText(e.target.value)}
           />
           <input

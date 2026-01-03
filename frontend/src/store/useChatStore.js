@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
-import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   selectedUser: null,
+  unreadCounts: {},
   isUsersLoading: false,
   isMessagesLoading: false,
 
@@ -47,22 +47,33 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  subscribeToMessages: () => {
-    const { selectedUser } = get();
-    if (!selectedUser) return;
+  handleIncomingMessage: (newMessage) => {
+    const { selectedUser, messages, unreadCounts } = get();
 
-    const socket = useAuthStore.getState().socket;
+    const isCurrentChat =
+      selectedUser && newMessage.senderId === selectedUser._id;
 
-    socket.on("newMessage", (newMessage) => {
-      if (newMessage.senderId !== selectedUser._id) return;
-      set({ messages: [...get().messages, newMessage] });
-    });
+    if (isCurrentChat) {
+      set({ messages: [...messages, newMessage] });
+    } else {
+      const currentCount = unreadCounts[newMessage.senderId] || 0;
+      set({
+        unreadCounts: {
+          ...unreadCounts,
+          [newMessage.senderId]: currentCount + 1,
+        },
+      });
+    }
   },
 
-  unsubscribeFromMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
-  },
+  setSelectedUser: (selectedUser) => {
+    const { unreadCounts } = get();
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+    if (selectedUser && unreadCounts[selectedUser._id]) {
+      const { [selectedUser._id]: _removed, ...rest } = unreadCounts;
+      set({ selectedUser, unreadCounts: rest });
+    } else {
+      set({ selectedUser });
+    }
+  },
 }));

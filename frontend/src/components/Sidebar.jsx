@@ -5,8 +5,14 @@ import { Users } from "lucide-react";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 
 const Sidebar = () => {
-  const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } =
-    useChatStore();
+  const {
+    getUsers,
+    users,
+    selectedUser,
+    setSelectedUser,
+    isUsersLoading,
+    unreadCounts,
+  } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
@@ -73,7 +79,14 @@ const Sidebar = () => {
             </div>
 
             <div className="hidden lg:block text-left min-w-0">
-              <div className="font-medium truncate">{user.fullName}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-medium truncate">{user.fullName}</div>
+                {unreadCounts[user._id] > 0 && (
+                  <span className="badge badge-error badge-sm text-sm rounded-full">
+                    {unreadCounts[user._id]}
+                  </span>
+                )}
+              </div>
               <div className="text-sm text-zinc-400">
                 {onlineUsers.includes(user._id) ? "Online" : "Offline"}
               </div>
