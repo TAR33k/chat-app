@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern";
 import { Link } from "react-router-dom";
@@ -11,7 +11,9 @@ const LoginPage = () => {
     email: "",
     password: "",
   });
-  const { login, isLoggingIn } = useAuthStore();
+  const { login, isLoggingIn, googleLogin } = useAuthStore();
+
+  const googleButtonRef = useRef(null);
 
   const validateForm = () => {
     if (!formData.email.trim()) return toast.error("Email is required");
@@ -29,6 +31,30 @@ const LoginPage = () => {
 
     if (success === true) login(formData);
   };
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (!clientId) return;
+    if (!window.google || !googleButtonRef.current) return;
+
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: (response) => {
+        if (response.credential) {
+          googleLogin(response.credential);
+        } else {
+          toast.error("Google login failed");
+        }
+      },
+    });
+
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: "outline",
+      size: "large",
+      locale: "en",
+    });
+  }, [googleLogin]);
 
   return (
     <div className="h-screen grid lg:grid-cols-2">
@@ -114,6 +140,11 @@ const LoginPage = () => {
               )}
             </button>
           </form>
+
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <div className="divider">OR</div>
+            <div ref={googleButtonRef} className="flex justify-center w-[219px] h-[41px] rounded-full overflow-hidden" />
+          </div>
 
           <div className="text-center">
             <p className="text-base-content/60">

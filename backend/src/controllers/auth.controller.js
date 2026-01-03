@@ -2,6 +2,11 @@ import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { generateToken } from "../lib/utils.js";
 import cloudinary from "../lib/cloudinary.js";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = process.env.GOOGLE_CLIENT_ID
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+  : null;
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -117,6 +122,80 @@ export const checkAuth = (req, res) => {
     res.status(200).json(req.user);
   } catch (error) {
     console.error("Error in checkAuth controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const googleLogin = async (req, res) => {
+  const { credential } = req.body;
+
+  try {
+    if (!googleClient) {
+      return res
+        .status(500)
+        .json({ message: "Google client not configured on server" });
+    }
+
+    if (!credential) {
+      return res
+        .status(400)
+        .json({ message: "Google credential is required" });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.sub || !payload.email) {
+      return res.status(400).json({ message: "Invalid Google token payload" });
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const fullName = payload.name || email;
+    const picture = payload.picture;
+
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      user = await User.findOne({ email });
+
+      if (user) {
+        user.googleId = googleId;
+        if (picture && !user.profilePic) {
+          user.profilePic = picture;
+        }
+        await user.save();
+      } else {
+        const randomPassword = await bcrypt.genSalt(10).then((salt) =>
+          bcrypt.hash(`${googleId}.${Date.now()}`, salt)
+        );
+
+        user = new User({
+          fullName,
+          email,
+          password: randomPassword,
+          profilePic: picture || "",
+          googleId,
+        });
+
+        await user.save();
+      }
+    }
+
+    generateToken(user._id, res);
+
+    res.status(200).json({
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      profilePic: user.profilePic,
+    });
+  } catch (error) {
+    console.error("Error in googleLogin controller", error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 };

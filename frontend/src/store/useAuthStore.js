@@ -21,11 +21,23 @@ export const useAuthStore = create((set, get) => ({
       set({ authUser: response.data });
 
       get().connectSocket();
-    } catch (error) {
-      console.log("Error while checking auth", error);
+    } catch {
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
+    }
+  },
+
+  googleLogin: async (credential) => {
+    try {
+      const response = await axiosInstance.post("/auth/google", { credential });
+      set({ authUser: response.data });
+      toast.success("Logged in with Google");
+
+      get().connectSocket();
+    } catch (error) {
+      const message = error?.response?.data?.message || "Google login failed";
+      toast.error(message);
     }
   },
 
