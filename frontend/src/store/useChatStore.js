@@ -7,6 +7,7 @@ export const useChatStore = create((set, get) => ({
   users: [],
   selectedUser: null,
   unreadCounts: {},
+  typingUserId: null,
   isUsersLoading: false,
   isMessagesLoading: false,
 
@@ -63,6 +64,15 @@ export const useChatStore = create((set, get) => ({
           [newMessage.senderId]: currentCount + 1,
         },
       });
+    }
+  },
+
+  setTypingUser: (userId) => set({ typingUserId: userId }),
+
+  clearTypingUser: (userId) => {
+    const { typingUserId } = get();
+    if (typingUserId === userId) {
+      set({ typingUserId: null });
     }
   },
 

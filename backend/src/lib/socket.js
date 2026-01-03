@@ -66,6 +66,40 @@ io.on("connection", (socket) => {
       emitOnlineUsers();
     }
   });
+
+  socket.on("typing", async ({ receiverId }) => {
+    if (!receiverId || !userId) return;
+
+    try {
+      const receiverSocketId = await redisClient.hGet(
+        ONLINE_USERS_KEY,
+        receiverId.toString()
+      );
+
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("userTyping", { senderId: userId });
+      }
+    } catch (err) {
+      console.error("Error handling typing event", err);
+    }
+  });
+
+  socket.on("stopTyping", async ({ receiverId }) => {
+    if (!receiverId || !userId) return;
+
+    try {
+      const receiverSocketId = await redisClient.hGet(
+        ONLINE_USERS_KEY,
+        receiverId.toString()
+      );
+
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("userStopTyping", { senderId: userId });
+      }
+    } catch (err) {
+      console.error("Error handling stopTyping event", err);
+    }
+  });
 });
 
 export { io, app, server };

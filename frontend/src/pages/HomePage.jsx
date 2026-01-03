@@ -6,22 +6,35 @@ import NoChatSelected from "../components/NoChatSelected";
 import ChatContainer from "../components/ChatContainer";
 
 const HomePage = () => {
-  const { selectedUser, handleIncomingMessage } = useChatStore();
+  const { selectedUser, handleIncomingMessage, setTypingUser, clearTypingUser } =
+    useChatStore();
   const { socket } = useAuthStore();
 
   useEffect(() => {
     if (!socket) return;
 
-    const listener = (newMessage) => {
+    const handleNewMessage = (newMessage) => {
       handleIncomingMessage(newMessage);
     };
 
-    socket.on("newMessage", listener);
+    const handleUserTyping = ({ senderId }) => {
+      setTypingUser(senderId);
+    };
+
+    const handleUserStopTyping = ({ senderId }) => {
+      clearTypingUser(senderId);
+    };
+
+    socket.on("newMessage", handleNewMessage);
+    socket.on("userTyping", handleUserTyping);
+    socket.on("userStopTyping", handleUserStopTyping);
 
     return () => {
-      socket.off("newMessage", listener);
+      socket.off("newMessage", handleNewMessage);
+      socket.off("userTyping", handleUserTyping);
+      socket.off("userStopTyping", handleUserStopTyping);
     };
-  }, [socket, handleIncomingMessage]);
+  }, [socket, handleIncomingMessage, setTypingUser, clearTypingUser]);
 
   return (
     <div className="h-screen bg-base-200">

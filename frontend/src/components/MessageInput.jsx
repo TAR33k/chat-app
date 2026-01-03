@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -8,7 +9,9 @@ const MessageInput = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const typingTimeoutRef = useRef(null);
+  const { sendMessage, selectedUser } = useChatStore();
+  const { socket } = useAuthStore();
 
   useEffect(() => {
     if (textInputRef.current) {
@@ -58,6 +61,9 @@ const MessageInput = () => {
       setText("");
       setImagePreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (socket && selectedUser) {
+        socket.emit("stopTyping", { receiverId: selectedUser._id });
+      }
       if (textInputRef.current) textInputRef.current.focus();
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -94,7 +100,22 @@ const MessageInput = () => {
             placeholder="Type a message..."
             value={text}
             ref={textInputRef}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setText(newValue);
+
+              if (!socket || !selectedUser) return;
+
+              socket.emit("typing", { receiverId: selectedUser._id });
+
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+              }
+
+              typingTimeoutRef.current = setTimeout(() => {
+                socket.emit("stopTyping", { receiverId: selectedUser._id });
+              }, 1000);
+            }}
           />
           <input
             type="file"
